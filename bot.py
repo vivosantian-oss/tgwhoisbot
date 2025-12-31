@@ -2,7 +2,7 @@ import os
 import telebot
 import requests
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Берёт из Environment Variables
+BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")  # Берёт из Environment Variables
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
