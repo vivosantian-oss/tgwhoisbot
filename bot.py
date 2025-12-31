@@ -1,10 +1,10 @@
-import os
 import telebot
 import requests
+import os
 
-BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")  # Берёт из Environment Variables
+BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")  # Токен из Render (Environment Variables)
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
@@ -21,7 +21,7 @@ def cmd_whois(message):
 
     address = text[1].strip()
 
-    # Отправляем сообщение, которое будем редактировать (для скорости)
+    # Сообщение, которое будем редактировать
     status_msg = bot.reply_to(message, "<i>🔍 Получаю информацию...</i>")
 
     host = address
@@ -40,11 +40,12 @@ def cmd_whois(message):
     core = 'Неизвестно'
     online_players = '0/0'
     ip_for_geo = host
-try:
+
+    try:
         url = f"https://api.mcsrvstat.us/bedrock/3/{host}"
         if port != 19132:
             url += f":{port}"
-        headers = {"User-Agent": "CubexBot/1.0"}  # Ускоряет ответ от API
+        headers = {"User-Agent": "CubexBot/1.0"}
         resp = requests.get(url, timeout=8, headers=headers)
         data = resp.json()
 
@@ -73,7 +74,8 @@ try:
                 ip_for_geo = data["ip"]
     except:
         pass
-org = 'Неизвестно'
+
+    org = 'Неизвестно'
     provider = 'Неизвестно'
     country = 'Неизвестно'
     city = 'Неизвестно'
@@ -84,8 +86,7 @@ org = 'Неизвестно'
         f"https://ipwho.is/{ip_for_geo}",
         f"https://free.freeipapi.com/api/json/{ip_for_geo}",
         f"https://ipinfo.io/{ip_for_geo}/json",
-        f"https://ipapi.co/{ip_for_geo}/json/",
-        f"https://api.ipgeolocation.io/ipgeo?ip={ip_for_geo}"
+        f"https://ipapi.co/{ip_for_geo}/json/"
     ]
 
     headers = {"User-Agent": "CubexBot/1.0"}
@@ -101,7 +102,7 @@ org = 'Неизвестно'
                 if geo.get("status") == "fail":
                     continue
                 org = geo.get("org", "Неизвестно")
-                provider = geo.get("isp") or geo.get("asname") or (geo.get("as") and geo["as"].split(' ', 1)[1] if ' ' in geo.get("as", "") else "Неизвестно") or "Неизвестно"
+                provider = geo.get("isp") or geo.get("asname") or "Неизвестно"
                 country = f"{geo.get('country', 'Неизвестно')} ({geo.get('countryCode', '')})"
                 city = geo.get("city", "Неизвестно")
                 timezone = geo.get("timezone", "Неизвестно")
@@ -110,8 +111,8 @@ org = 'Неизвестно'
             elif "ipwho.is" in url:
                 if not geo.get("success"):
                     continue
-                org = geo.get("org") or geo.get("connection", {}).get("org") or "Неизвестно"
-                provider = geo.get("connection", {}).get("isp") or org or "Неизвестно"
+                org = geo.get("org", "Неизвестно")
+                provider = geo.get("connection", {}).get("isp", "Неизвестно")
                 country = f"{geo.get('country', 'Неизвестно')} ({geo.get('country_code', '')})"
                 city = geo.get("city", "Неизвестно")
                 timezone = geo.get("timezone", {}).get("name", "Неизвестно")
@@ -142,16 +143,6 @@ org = 'Неизвестно'
                 city = geo.get("city", "Неизвестно")
                 timezone = geo.get("timezone", "Неизвестно")
                 break
-
-            elif "ipgeolocation" in url:
-                if geo.get("message"):
-                    continue
-                org = geo.get("organization", "Неизвестно")
-                provider = geo.get("isp", "Неизвестно")
-                country = f"{geo.get('country_name', 'Неизвестно')} ({geo.get('country_code2', '')})"
-                city = geo.get("city", "Неизвестно")
-                timezone = geo.get("time_zone", {}).get("name", "Неизвестно")
-                break
         except:
             continue
 
@@ -175,7 +166,7 @@ org = 'Неизвестно'
     else:
         response += "\n\n❌ Сервер Minecraft Bedrock сейчас оффлайн или недоступен по указанному адресу."
 
-    # Редактируем сообщение "Получаю информацию..." на полный ответ
+    # Редактируем сообщение на полный ответ
     bot.edit_message_text(chat_id=status_msg.chat.id, message_id=status_msg.message_id, text=response)
 
-bot.infinity_polling(timeout=20, long_polling_timeout=10)
+bot.infinity_polling()
