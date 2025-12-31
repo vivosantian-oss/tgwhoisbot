@@ -1,12 +1,14 @@
 import telebot
 import requests
 import os
+from dotenv import load_dotenv
 
-# Токен берётся из переменной окружения (на Bothost.ru это безопасно)
-BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")
+load_dotenv() 
+
+BOT_TOKEN = os.getenv('8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8')
 
 if BOT_TOKEN is None:
-    print("ОШИБКА: BOT_TOKEN не найден! Добавьте его в переменные на Bothost.ru")
+    print("ОШИБКА: BOT_TOKEN не найден в .env!")
     exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -26,7 +28,6 @@ def cmd_whois(message):
 
     address = text[1].strip()
 
-    # Сообщение, которое будем редактировать
     status_msg = bot.reply_to(message, f"🔍 Получаю информацию о {address}...")
 
     host = address
@@ -50,8 +51,7 @@ def cmd_whois(message):
         url = f"https://api.mcsrvstat.us/bedrock/3/{host}"
         if port != 19132:
             url += f":{port}"
-        headers = {"User-Agent": "CubexBot/1.0"}
-        resp = requests.get(url, timeout=10, headers=headers)
+        resp = requests.get(url, timeout=10)
         data = resp.json()
 
         if data.get("online"):
@@ -96,11 +96,9 @@ def cmd_whois(message):
         f"https://ipwhois.app/json/{ip_for_geo}"
     ]
 
-    headers = {"User-Agent": "CubexBot/1.0"}
-
     for url in geo_urls:
         try:
-            resp = requests.get(url, timeout=6, headers=headers)
+            resp = requests.get(url, timeout=8)
             if resp.status_code != 200:
                 continue
             geo = resp.json()
@@ -195,8 +193,6 @@ def cmd_whois(message):
     else:
         response += "\n\n❌ Сервер Minecraft Bedrock сейчас оффлайн или недоступен по указанному адресу."
 
-    # Редактируем сообщение
     bot.edit_message_text(chat_id=status_msg.chat.id, message_id=status_msg.message_id, text=response)
 
-# Запуск бота
-bot.infinity_polling(none_stop=True)
+bot.infinity_polling()
