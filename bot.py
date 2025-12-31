@@ -6,7 +6,7 @@ import os
 BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")
 
 if BOT_TOKEN is None:
-    print("Ошибка: BOT_TOKEN не найден! Добавьте его в переменные на Bothost.ru")
+    print("ОШИБКА: BOT_TOKEN не найден! Добавьте его в переменные на Bothost.ru")
     exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -26,6 +26,7 @@ def cmd_whois(message):
 
     address = text[1].strip()
 
+    # Сообщение, которое будем редактировать
     status_msg = bot.reply_to(message, f"🔍 Получаю информацию о {address}...")
 
     host = address
@@ -49,7 +50,8 @@ def cmd_whois(message):
         url = f"https://api.mcsrvstat.us/bedrock/3/{host}"
         if port != 19132:
             url += f":{port}"
-        resp = requests.get(url, timeout=10)
+        headers = {"User-Agent": "CubexBot/1.0"}
+        resp = requests.get(url, timeout=10, headers=headers)
         data = resp.json()
 
         if data.get("online"):
@@ -76,7 +78,7 @@ def cmd_whois(message):
             if data.get("ip"):
                 ip_for_geo = data["ip"]
     except Exception as e:
-        print(e)
+        print(f"Ошибка mcsrvstat: {e}")
 
     org = 'Неизвестно'
     provider = 'Неизвестно'
@@ -86,62 +88,91 @@ def cmd_whois(message):
 
     geo_urls = [
         f"https://ip-api.com/json/{ip_for_geo}?fields=org,isp,as,asname,country,countryCode,city,timezone&lang=ru",
-        f"https://free.freeipapi.com/api/json/{ip_for_geo}",
         f"https://ipwho.is/{ip_for_geo}",
+        f"https://free.freeipapi.com/api/json/{ip_for_geo}",
         f"https://ipinfo.io/{ip_for_geo}/json",
-        f"https://ipapi.co/{ip_for_geo}/json/"
+        f"https://ipapi.co/{ip_for_geo}/json/",
+        f"https://api.ipgeolocation.io/ipgeo?ip={ip_for_geo}",
+        f"https://ipwhois.app/json/{ip_for_geo}"
     ]
+
+    headers = {"User-Agent": "CubexBot/1.0"}
 
     for url in geo_urls:
         try:
-            resp = requests.get(url, timeout=8)
-            if resp.status_code == 200:
-                geo = resp.json()
+            resp = requests.get(url, timeout=6, headers=headers)
+            if resp.status_code != 200:
+                continue
+            geo = resp.json()
 
-                if "ip-api.com" in url:
-                    if geo.get("status") == "success":
-                        org = geo.get("org", "Неизвестно")
-                        provider = geo.get("isp", "Неизвестно")
-                        country = f"{geo.get('country', 'Неизвестно')} ({geo.get('countryCode', '')})"
-                        city = geo.get("city", "Неизвестно")
-                        timezone = geo.get("timezone", "Неизвестно")
-                        break
+            success = False
 
-                elif "freeipapi" in url:
-                    org = geo.get("organization", "Неизвестно")
-                    provider = geo.get("isp", "Неизвестно")
-                    country = f"{geo.get('countryName', 'Неизвестно')} ({geo.get('countryCode', '')})"
-                    city = geo.get("city", "Неизвестно")
-                    timezone = geo.get("timeZone", "Неизвестно")
-                    break
-
-                elif "ipwho.is" in url:
-                    if geo.get("success"):
-                        org = geo.get("org", "Неизвестно")
-                        provider = geo.get("connection", {}).get("isp", "Неизвестно")
-                        country = f"{geo.get('country', 'Неизвестно')} ({geo.get('country_code', '')})"
-                        city = geo.get("city", "Неизвестно")
-                        timezone = geo.get("timezone", {}).get("name", "Неизвестно")
-                        break
-
-                elif "ipinfo.io" in url:
-                    if geo.get("error"):
-                        continue
-                    org = geo.get("company", {}).get("name", "Неизвестно")
-                    provider = geo.get("org", "Неизвестно").split(' ', 1)[1] if ' ' in geo.get("org", "") else "Неизвестно"
-                    country = geo.get("country", "Неизвестно")
-                    city = geo.get("city", "Неизвестно")
-                    timezone = geo.get("timezone", "Неизвестно")
-                    break
-
-                elif "ipapi.co" in url:
+            if "ip-api.com" in url:
+                if geo.get("status") == "success":
+                    success = True
                     org = geo.get("org", "Неизвестно")
-                    provider = geo.get("asn", "Неизвестно")
-                    country = f"{geo.get('country_name', 'Неизвестно')} ({geo.get('country', '')})"
+                    provider = geo.get("isp") or geo.get("asname") or "Неизвестно"
+                    country = f"{geo.get('country', 'Неизвестно')} ({geo.get('countryCode', '')})"
                     city = geo.get("city", "Неизвестно")
                     timezone = geo.get("timezone", "Неизвестно")
-                    break
-        except:
+
+            elif "ipwho.is" in url:
+                if geo.get("success"):
+                    success = True
+                    org = geo.get("org", "Неизвестно")
+                    provider = geo.get("connection", {}).get("isp", "Неизвестно")
+                    country = f"{geo.get('country', 'Неизвестно')} ({geo.get('country_code', '')})"
+                    city = geo.get("city", "Неизвестно")
+                    timezone = geo.get("timezone", {}).get("name", "Неизвестно")
+
+            elif "freeipapi" in url:
+                success = True
+                org = geo.get("organization", "Неизвестно")
+                provider = geo.get("isp", "Неизвестно")
+                country = f"{geo.get('countryName', 'Неизвестно')} ({geo.get('countryCode', '')})"
+                city = geo.get("city", "Неизвестно")
+                timezone = geo.get("timeZone", "Неизвестно")
+
+            elif "ipinfo.io" in url:
+                if geo.get("error"):
+                    continue
+                success = True
+                org = geo.get("company", {}).get("name", "Неизвестно")
+                provider = geo.get("org", "Неизвестно").split(' ', 1)[1] if ' ' in geo.get("org", "") else "Неизвестно"
+                country = geo.get("country", "Неизвестно")
+                city = geo.get("city", "Неизвестно")
+                timezone = geo.get("timezone", "Неизвестно")
+
+            elif "ipapi.co" in url:
+                success = True
+                org = geo.get("org", "Неизвестно")
+                provider = geo.get("asn", "Неизвестно")
+                country = f"{geo.get('country_name', 'Неизвестно')} ({geo.get('country', '')})"
+                city = geo.get("city", "Неизвестно")
+                timezone = geo.get("timezone", "Неизвестно")
+
+            elif "ipgeolocation" in url:
+                if geo.get("message"):
+                    continue
+                success = True
+                org = geo.get("organization", "Неизвестно")
+                provider = geo.get("isp", "Неизвестно")
+                country = f"{geo.get('country_name', 'Неизвестно')} ({geo.get('country_code2', '')})"
+                city = geo.get("city", "Неизвестно")
+                timezone = geo.get("time_zone", {}).get("name", "Неизвестно")
+
+            elif "ipwhois.app" in url:
+                success = True
+                org = geo.get("org", "Неизвестно")
+                provider = geo.get("isp", "Неизвестно")
+                country = f"{geo.get('country', 'Неизвестно')} ({geo.get('country_code', '')})"
+                city = geo.get("city", "Неизвестно")
+                timezone = geo.get("timezone", "Неизвестно")
+
+            if success and provider != 'Неизвестно':
+                break
+        except Exception as e:
+            print(f"Geo ошибка {url}: {e}")
             continue
 
     response = (
@@ -164,7 +195,8 @@ def cmd_whois(message):
     else:
         response += "\n\n❌ Сервер Minecraft Bedrock сейчас оффлайн или недоступен по указанному адресу."
 
+    # Редактируем сообщение
     bot.edit_message_text(chat_id=status_msg.chat.id, message_id=status_msg.message_id, text=response)
 
-# Запуск бота (для Bothost.ru — infinity_polling работает в фоне)
-bot.infinity_polling()
+# Запуск бота
+bot.infinity_polling(none_stop=True)
