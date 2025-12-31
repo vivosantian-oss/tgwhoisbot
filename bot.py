@@ -1,10 +1,10 @@
+import os
 import telebot
 import requests
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-BOT_TOKEN = "8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8" 
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Берёт из Environment Variables
 
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
+bot = telebot.TeleBot(BOT_TOKEN)
 
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
