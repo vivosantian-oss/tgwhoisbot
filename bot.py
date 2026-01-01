@@ -3,7 +3,7 @@ import requests
 from dotenv import load_dotenv
 import os
 
-load_dotenv(8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8)  # Загружает .env файл на Bothost.ru
+load_dotenv()  # Загружает .env файл на Bothost.ru
 
 BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")
 
