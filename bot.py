@@ -2,7 +2,6 @@ import telebot
 import requests
 import os
 
-# Токен берётся из Secrets на Replit (безопасно!)
 BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")
 
 if BOT_TOKEN is None:
@@ -82,6 +81,7 @@ def cmd_whois(message):
     except Exception as e:
         print(f"Ошибка mcsrvstat: {e}")
 
+    # Исправленный и расширенный geo-поиск (всегда берёт лучшие данные)
     org = 'Неизвестно'
     provider = 'Неизвестно'
     country = 'Неизвестно'
@@ -109,90 +109,81 @@ def cmd_whois(message):
                 continue
             geo = resp.json()
 
-            success = False
-
+            # ip-api.com — лучший для организации и пояса
             if "ip-api.com" in url:
                 if geo.get("status") == "success":
-                    success = True
                     org = geo.get("org", "Неизвестно")
                     provider = geo.get("isp") or geo.get("asname") or "Неизвестно"
                     asn = geo.get("as", "Неизвестно")
                     country = f"{geo.get('country', 'Неизвестно')} ({geo.get('countryCode', '')})"
                     region = geo.get("regionName", "Неизвестно")
                     city = geo.get("city", "Неизвестно")
-                    timezone = geo.get("timezone", "Неизвестно")
+                    timezone = geo.get("timezone", "Неизвестно") or "Неизвестно"
+                    break  # ip-api самый точный — останавливаемся
 
+            # Резервные API
             elif "ipwho.is" in url:
                 if geo.get("success"):
-                    success = True
-                    org = geo.get("org", "Неизвестно")
-                    provider = geo.get("connection", {}).get("isp", "Неизвестно")
-                    asn = geo.get("connection", {}).get("asn", "Неизвестно")
-                    country = f"{geo.get('country', 'Неизвестно')} ({geo.get('country_code', '')})"
-                    region = geo.get("region", "Неизвестно")
-                    city = geo.get("city", "Неизвестно")
-                    timezone = geo.get("timezone", {}).get("name", "Неизвестно")
+                    org = geo.get("org", org)
+                    provider = geo.get("connection", {}).get("isp", provider)
+                    asn = geo.get("connection", {}).get("asn", asn)
+                    country = f"{geo.get('country', country.split(' (')[0])} ({geo.get('country_code', '')})"
+                    region = geo.get("region", region)
+                    city = geo.get("city", city)
+                    timezone = geo.get("timezone", {}).get("name", timezone)
 
             elif "freeipapi" in url:
-                success = True
-                org = geo.get("organization", "Неизвестно")
-                provider = geo.get("isp", "Неизвестно")
-                asn = geo.get("asn", "Неизвестно")
-                country = f"{geo.get('countryName', 'Неизвестно')} ({geo.get('countryCode', '')})"
-                region = geo.get("regionName", "Неизвестно")
-                city = geo.get("city", "Неизвестно")
-                timezone = geo.get("timeZone", "Неизвестно")
+                org = geo.get("organization", org)
+                provider = geo.get("isp", provider)
+                asn = geo.get("asn", asn)
+                country = f"{geo.get('countryName', country.split(' (')[0])} ({geo.get('countryCode', '')})"
+                region = geo.get("regionName", region)
+                city = geo.get("city", city)
+                timezone = geo.get("timeZone", timezone)
 
             elif "ipinfo.io" in url:
-                if geo.get("error"):
-                    continue
-                success = True
-                org = geo.get("company", {}).get("name", "Неизвестно")
-                provider = geo.get("org", "Неизвестно").split(' ', 1)[1] if ' ' in geo.get("org", "") else "Неизвестно"
-                asn = geo.get("org", "Неизвестно").split(' ', 1)[0] if ' ' in geo.get("org", "") else "Неизвестно"
-                country = geo.get("country", "Неизвестно")
-                region = geo.get("region", "Неизвестно")
-                city = geo.get("city", "Неизвестно")
-                timezone = geo.get("timezone", "Неизвестно")
+                if not geo.get("error"):
+                    org = geo.get("company", {}).get("name", org)
+                    provider = geo.get("org", "").split(' ', 1)[1] if ' ' in geo.get("org", "") else provider
+                    asn = geo.get("org", "").split(' ', 1)[0] if ' ' in geo.get("org", "") else asn
+                    country = geo.get("country", country.split(' (')[0])
+                    region = geo.get("region", region)
+                    city = geo.get("city", city)
+                    timezone = geo.get("timezone", timezone)
 
             elif "ipapi.co" in url:
-                success = True
-                org = geo.get("org", "Неизвестно")
-                provider = geo.get("asn", "Неизвестно")
-                asn = geo.get("asn", "Неизвестно")
-                country = f"{geo.get('country_name', 'Неизвестно')} ({geo.get('country', '')})"
-                region = geo.get("region", "Неизвестно")
-                city = geo.get("city", "Неизвестно")
-                timezone = geo.get("timezone", "Неизвестно")
+                org = geo.get("org", org)
+                provider = geo.get("asn", provider)
+                asn = geo.get("asn", asn)
+                country = f"{geo.get('country_name', country.split(' (')[0])} ({geo.get('country', '')})"
+                region = geo.get("region", region)
+                city = geo.get("city", city)
+                timezone = geo.get("timezone", timezone)
 
             elif "ipgeolocation" in url:
-                if geo.get("message"):
-                    continue
-                success = True
-                org = geo.get("organization", "Неизвестно")
-                provider = geo.get("isp", "Неизвестно")
-                asn = geo.get("asn", "Неизвестно")
-                country = f"{geo.get('country_name', 'Неизвестно')} ({geo.get('country_code2', '')})"
-                region = geo.get("state_prov", "Неизвестно")
-                city = geo.get("city", "Неизвестно")
-                timezone = geo.get("time_zone", {}).get("name", "Неизвестно")
+                if not geo.get("message"):
+                    org = geo.get("organization", org)
+                    provider = geo.get("isp", provider)
+                    asn = geo.get("asn", asn)
+                    country = f"{geo.get('country_name', country.split(' (')[0])} ({geo.get('country_code2', '')})"
+                    region = geo.get("state_prov", region)
+                    city = geo.get("city", city)
+                    timezone = geo.get("time_zone", {}).get("name", timezone)
 
             elif "ipwhois.app" in url:
-                success = True
-                org = geo.get("org", "Неизвестно")
-                provider = geo.get("isp", "Неизвестно")
-                asn = geo.get("asn", "Неизвестно")
-                country = f"{geo.get('country', 'Неизвестно')} ({geo.get('country_code', '')})"
-                region = geo.get("region", "Неизвестно")
-                city = geo.get("city", "Неизвестно")
-                timezone = geo.get("timezone", "Неизвестно")
+                org = geo.get("org", org)
+                provider = geo.get("isp", provider)
+                asn = geo.get("asn", asn)
+                country = f"{geo.get('country', country.split(' (')[0])} ({geo.get('country_code', '')})"
+                region = geo.get("region", region)
+                city = geo.get("city", city)
+                timezone = geo.get("timezone", timezone)
 
-            if success:
-                break
         except Exception as e:
             print(f"Geo ошибка {url}: {e}")
             continue
 
+    # Ответ с исправленным определением организации и пояса
     response = (
         f"<b>Информация о адресе {address}</b>\n\n"
         f"🌐 <b>Реальный IP:</b> {real_ip}\n"
