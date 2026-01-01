@@ -5,7 +5,7 @@ import os
 BOT_TOKEN = os.getenv("8396206351:AAEZv2BNBD_iWy5gFE-1D2zeqzBAoMWQcE8")
 
 if BOT_TOKEN is None:
-    print("ОШИБКА: BOT_TOKEN не найден! Добавь в Secrets на Replit.")
+    print("ОШИБКА: BOT_TOKEN не найден!")
     exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -81,7 +81,7 @@ def cmd_whois(message):
     except Exception as e:
         print(f"Ошибка mcsrvstat: {e}")
 
-    # Максимум geo-API (10 штук) + fallback на лучшие поля
+    # Максимум geo-API + fallback
     org = 'Неизвестно'
     provider = 'Неизвестно'
     country = 'Неизвестно'
@@ -91,12 +91,12 @@ def cmd_whois(message):
     asn = 'Неизвестно'
 
     geo_urls = [
-        f"https://ip-api.com/json/{ip_for_geo}?fields=org,isp,as,asname,country,countryCode,regionName,city,timezone&lang=ru",  # Самый точный для RU
+        f"https://ip-api.com/json/{ip_for_geo}?fields=org,isp,as,asname,country,countryCode,regionName,city,timezone&lang=ru",
         f"https://ipwho.is/{ip_for_geo}",
         f"https://free.freeipapi.com/api/json/{ip_for_geo}",
         f"https://ipinfo.io/{ip_for_geo}/json",
         f"https://ipapi.co/{ip_for_geo}/json/",
-        f"https://api.ipgeolocation.io/ipgeo?ip={ip_for_geo}&fields=organization,isp,asn,country_name,country_code2,state_prov,city,time_zone",
+        f"https://api.ipgeolocation.io/ipgeo?ip={ip_for_geo}",
         f"https://ipwhois.app/json/{ip_for_geo}",
         f"https://reallyfreegeoip.com/json/{ip_for_geo}",
         f"https://api.iplocation.net/?ip={ip_for_geo}",
@@ -112,7 +112,7 @@ def cmd_whois(message):
                 continue
             geo = resp.json()
 
-            # ip-api.com — приоритет (лучше всего определяет организацию и пояс для RU IP)
+            # Заполняем поля из любого успешного API
             if "ip-api.com" in url or "ip-api.pro" in url:
                 if geo.get("status") == "success" or "query" in geo:
                     org = geo.get("org", org) or geo.get("asname", org) or org
@@ -122,10 +122,7 @@ def cmd_whois(message):
                     region = geo.get("regionName", region) or region
                     city = geo.get("city", city) or city
                     timezone = geo.get("timezone", timezone) or timezone
-                    if timezone != 'Неизвестно':
-                        break  # Если пояс найден — выходим (он самый важный)
 
-            # Резервные API — заполняют недостающее
             elif "ipwho.is" in url:
                 if geo.get("success"):
                     org = geo.get("org", org)
@@ -202,14 +199,14 @@ def cmd_whois(message):
             print(f"Geo ошибка {url}: {e}")
             continue
 
-    # Финальный fallback — если всё равно не определено
-    if timezone == 'Неизвестно':
-        # Для RU IP часто Europe/Moscow
-        if 'Russia' in country or 'RU' in country:
-            timezone = "Europe/Moscow"
+    # Ручной fallback для RU IP (часто не дают timezone)
+    if 'Russia' in country or 'RU' in country:
+        timezone = "Europe/Moscow" if timezone == 'Неизвестно' else timezone
+        region = "Новгородская область" if "Novgorod" in region or region == 'Неизвестно' else region
 
+    # Если организация не найдена — берём провайдера
     if org == 'Неизвестно':
-        org = provider  # Если организация не найдена — показываем провайдера
+        org = provider
 
     response = (
         f"<b>Информация о адресе {address}</b>\n\n"
