@@ -81,7 +81,7 @@ def cmd_whois(message):
     except Exception as e:
         print(f"Ошибка mcsrvstat: {e}")
 
-    # Исправленный и расширенный geo-поиск (всегда берёт лучшие данные)
+    # Максимум geo-API (10 штук) + fallback на лучшие поля
     org = 'Неизвестно'
     provider = 'Неизвестно'
     country = 'Неизвестно'
@@ -91,13 +91,16 @@ def cmd_whois(message):
     asn = 'Неизвестно'
 
     geo_urls = [
-        f"https://ip-api.com/json/{ip_for_geo}?fields=org,isp,as,asname,country,countryCode,regionName,city,timezone&lang=ru",
+        f"https://ip-api.com/json/{ip_for_geo}?fields=org,isp,as,asname,country,countryCode,regionName,city,timezone&lang=ru",  # Самый точный для RU
         f"https://ipwho.is/{ip_for_geo}",
         f"https://free.freeipapi.com/api/json/{ip_for_geo}",
         f"https://ipinfo.io/{ip_for_geo}/json",
         f"https://ipapi.co/{ip_for_geo}/json/",
-        f"https://api.ipgeolocation.io/ipgeo?ip={ip_for_geo}",
-        f"https://ipwhois.app/json/{ip_for_geo}"
+        f"https://api.ipgeolocation.io/ipgeo?ip={ip_for_geo}&fields=organization,isp,asn,country_name,country_code2,state_prov,city,time_zone",
+        f"https://ipwhois.app/json/{ip_for_geo}",
+        f"https://reallyfreegeoip.com/json/{ip_for_geo}",
+        f"https://api.iplocation.net/?ip={ip_for_geo}",
+        f"https://ip-api.pro/json/{ip_for_geo}"
     ]
 
     headers = {"User-Agent": "CubexBot/1.0"}
@@ -109,25 +112,26 @@ def cmd_whois(message):
                 continue
             geo = resp.json()
 
-            # ip-api.com — лучший для организации и пояса
-            if "ip-api.com" in url:
-                if geo.get("status") == "success":
-                    org = geo.get("org", "Неизвестно")
-                    provider = geo.get("isp") or geo.get("asname") or "Неизвестно"
-                    asn = geo.get("as", "Неизвестно")
-                    country = f"{geo.get('country', 'Неизвестно')} ({geo.get('countryCode', '')})"
-                    region = geo.get("regionName", "Неизвестно")
-                    city = geo.get("city", "Неизвестно")
-                    timezone = geo.get("timezone", "Неизвестно") or "Неизвестно"
-                    break  # ip-api самый точный — останавливаемся
+            # ip-api.com — приоритет (лучше всего определяет организацию и пояс для RU IP)
+            if "ip-api.com" in url or "ip-api.pro" in url:
+                if geo.get("status") == "success" or "query" in geo:
+                    org = geo.get("org", org) or geo.get("asname", org) or org
+                    provider = geo.get("isp", provider) or geo.get("asname", provider) or provider
+                    asn = geo.get("as", asn) or asn
+                    country = f"{geo.get('country', country.split(' (')[0] if '(' in country else country)} ({geo.get('countryCode', '')})"
+                    region = geo.get("regionName", region) or region
+                    city = geo.get("city", city) or city
+                    timezone = geo.get("timezone", timezone) or timezone
+                    if timezone != 'Неизвестно':
+                        break  # Если пояс найден — выходим (он самый важный)
 
-            # Резервные API
+            # Резервные API — заполняют недостающее
             elif "ipwho.is" in url:
                 if geo.get("success"):
                     org = geo.get("org", org)
                     provider = geo.get("connection", {}).get("isp", provider)
                     asn = geo.get("connection", {}).get("asn", asn)
-                    country = f"{geo.get('country', country.split(' (')[0])} ({geo.get('country_code', '')})"
+                    country = f"{geo.get('country', country.split(' (')[0] if '(' in country else country)} ({geo.get('country_code', '')})"
                     region = geo.get("region", region)
                     city = geo.get("city", city)
                     timezone = geo.get("timezone", {}).get("name", timezone)
@@ -136,7 +140,7 @@ def cmd_whois(message):
                 org = geo.get("organization", org)
                 provider = geo.get("isp", provider)
                 asn = geo.get("asn", asn)
-                country = f"{geo.get('countryName', country.split(' (')[0])} ({geo.get('countryCode', '')})"
+                country = f"{geo.get('countryName', country.split(' (')[0] if '(' in country else country)} ({geo.get('countryCode', '')})"
                 region = geo.get("regionName", region)
                 city = geo.get("city", city)
                 timezone = geo.get("timeZone", timezone)
@@ -146,7 +150,7 @@ def cmd_whois(message):
                     org = geo.get("company", {}).get("name", org)
                     provider = geo.get("org", "").split(' ', 1)[1] if ' ' in geo.get("org", "") else provider
                     asn = geo.get("org", "").split(' ', 1)[0] if ' ' in geo.get("org", "") else asn
-                    country = geo.get("country", country.split(' (')[0])
+                    country = geo.get("country", country.split(' (')[0] if '(' in country else country)
                     region = geo.get("region", region)
                     city = geo.get("city", city)
                     timezone = geo.get("timezone", timezone)
@@ -155,7 +159,7 @@ def cmd_whois(message):
                 org = geo.get("org", org)
                 provider = geo.get("asn", provider)
                 asn = geo.get("asn", asn)
-                country = f"{geo.get('country_name', country.split(' (')[0])} ({geo.get('country', '')})"
+                country = f"{geo.get('country_name', country.split(' (')[0] if '(' in country else country)} ({geo.get('country', '')})"
                 region = geo.get("region", region)
                 city = geo.get("city", city)
                 timezone = geo.get("timezone", timezone)
@@ -165,7 +169,7 @@ def cmd_whois(message):
                     org = geo.get("organization", org)
                     provider = geo.get("isp", provider)
                     asn = geo.get("asn", asn)
-                    country = f"{geo.get('country_name', country.split(' (')[0])} ({geo.get('country_code2', '')})"
+                    country = f"{geo.get('country_name', country.split(' (')[0] if '(' in country else country)} ({geo.get('country_code2', '')})"
                     region = geo.get("state_prov", region)
                     city = geo.get("city", city)
                     timezone = geo.get("time_zone", {}).get("name", timezone)
@@ -174,8 +178,23 @@ def cmd_whois(message):
                 org = geo.get("org", org)
                 provider = geo.get("isp", provider)
                 asn = geo.get("asn", asn)
-                country = f"{geo.get('country', country.split(' (')[0])} ({geo.get('country_code', '')})"
+                country = f"{geo.get('country', country.split(' (')[0] if '(' in country else country)} ({geo.get('country_code', '')})"
                 region = geo.get("region", region)
+                city = geo.get("city", city)
+                timezone = geo.get("timezone", timezone)
+
+            elif "reallyfreegeoip" in url:
+                org = geo.get("org", org)
+                provider = geo.get("isp", provider)
+                country = f"{geo.get('country_name', country.split(' (')[0] if '(' in country else country)} ({geo.get('country_code', '')})"
+                region = geo.get("region", region)
+                city = geo.get("city", city)
+                timezone = geo.get("time_zone", timezone)
+
+            elif "iplocation.net" in url:
+                org = geo.get("org", org)
+                provider = geo.get("isp", provider)
+                country = f"{geo.get('country_name', country.split(' (')[0] if '(' in country else country)} ({geo.get('country_code', '')})"
                 city = geo.get("city", city)
                 timezone = geo.get("timezone", timezone)
 
@@ -183,7 +202,15 @@ def cmd_whois(message):
             print(f"Geo ошибка {url}: {e}")
             continue
 
-    # Ответ с исправленным определением организации и пояса
+    # Финальный fallback — если всё равно не определено
+    if timezone == 'Неизвестно':
+        # Для RU IP часто Europe/Moscow
+        if 'Russia' in country or 'RU' in country:
+            timezone = "Europe/Moscow"
+
+    if org == 'Неизвестно':
+        org = provider  # Если организация не найдена — показываем провайдера
+
     response = (
         f"<b>Информация о адресе {address}</b>\n\n"
         f"🌐 <b>Реальный IP:</b> {real_ip}\n"
